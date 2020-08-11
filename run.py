@@ -9,11 +9,13 @@ import io
 import datetime
 
 import torchvision.models.detection
-from detecto.core import Model
+#from detecto.core import Model
 from visualize_detection import detect_live
 import torch
-from multiprocessing import Process, Queue
-import multiprocessing
+
+from detection_nano import object_detection
+
+import jetson.inference
 
 class DBase():
     def __init__(self):
@@ -33,10 +35,17 @@ class DBase():
 
         device = torch.device('cuda:0' if torch.cuda.is_available() else "cpu")
         print('device', device)
-        self.model = Model(device=device)
+        #self.model = Model(device=device)
+        self.model = jetson.inference.detectNet("ssd-mobilenet-v2", threshold=0.8)
 
-    def object_detection(self, image_ndarray):
+    def object_detection_detecto(self, image_ndarray):
         detected_image = detect_live(self.model, image = image_ndarray, score_filter=0.6)
+        return detected_image
+
+    def object_detection_nano(self, image_ndarray):
+        path = './photo.jpg'
+        cv2.imwrite(path, image_ndarray)
+        detected_image = object_detection(self.model, './test.jpeg')
         return detected_image
 
     def send_data(self, detected_image):
@@ -77,7 +86,7 @@ class DBase():
         while 1:
             t1=datetime.datetime.now()
             image = self.read_data()
-            detected_image = self.object_detection(image) 
+            detected_image = self.object_detection_nano(image) 
             #self.show_cv2(detected_image)
             self.send_data(detected_image)
             t2=datetime.datetime.now()
